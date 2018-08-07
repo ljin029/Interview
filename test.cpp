@@ -1,4 +1,7 @@
-#include <string.h>
+#include <iostream>
+#include <cstring>
+#include <string>
+
 using namespace std;
 
 // Function to find longest common substring.
@@ -51,7 +54,7 @@ string LCSubStr(string X, string Y)
  
     // If there is no common substring, print -1.
     if (result == 0) {
-        return "-1";
+        return "";
     }
  
     // Longest common substring is from index
@@ -62,17 +65,17 @@ void printAllSubstr(string s1, string s2)
 {
 	for(int i=0; i<s1.size(); ++i)
 	{
-		for(int j=i+1; j<=s1.size(); ++j)
+		for(int j=1; j<=(s1.size()-i); ++j)
 		{
 			string substr("");
 			substr = LCSubStr(s1.substr(i, j), s2);
 			if(!substr.empty())
 			{
-				printf("%s\n", substr.CStr());
+				printf("%s\n", substr.c_str());
 			}
 			else
 			{
-				
+				printf("cannot find common substring\n");
 			}
 			
 		}
@@ -93,6 +96,8 @@ int main( int argc, const char * argv [] )
 
 	string str1(argv[1]);
 	string str2(argv[2]);
+        printf("str1: %s\n", str1.c_str());
+        printf("str2: %s\n", str2.c_str());
 	if (str1.size() < str2.size())
 	{
 		printAllSubstr(str1, str2);
