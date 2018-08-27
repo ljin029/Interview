@@ -12,7 +12,7 @@ enum CtrlTaskType
 struct CtrlTaskElement
 {
     CtrlTaskType type;
-    TimerData period;
+    Time tm;
 }
 // Callback function descriptor
 struct CtrlTaskCallbackDesc
@@ -38,7 +38,7 @@ enum StateMode
 }
 struct Node
 {
-    CtrlTaskNode item;
+    CtrlTaskNode node;
     Node *next;
 };
 
@@ -70,7 +70,10 @@ Queue::~Queue()
         temp = head;
     }
 }
-
+Time Queue::getNextTime()
+{
+    return head->node.item.tm;
+}
 bool pop(CtrlTaskElement& var)
 {
     if(isEmpty()) return false;
@@ -122,13 +125,13 @@ class TaskManager {
 public:
     TaskManager();
     SysStatus regCallback(CtrlTaskElement& item, TaskCallbackFunc cbFunc, void* thisObj);
-    void processTask(CtrlTaskElement task);
-    void regCall();
-    CtrlTaskElement nextCall();
+    SysStatus nextCall();
+    Time getNextTime();
     void setMode(StateMode m) {mode = m;}
 private:
     Queue m_CtrlTaskQueue;
     StateMode m_mode;
+    Time m_period;
 }
 
 TaskManager:TaskManager() : m_mode(IDLE)
@@ -152,6 +155,12 @@ SysStatus TaskManager::regCallback(CtrlTaskElement& item, TaskCallbackFunc cbFun
 SysStatus TaskManager::callNext()
 {
     CtrlTaskNode* task;
+    Time current = getTime();
+    if((current-m_CtrlTaskQueue.getNextTime())>5)
+    {
+        m_period = current - m_CtrlTaskQueue.getNextTime();
+        return FAILURE;
+    }
     if(IDLE == m_mode && !m_CtrlTaskQueue.isEmpty())
     {
         m_CtrlTaskQueue.pop(task);
@@ -169,6 +178,22 @@ SysStatus TaskManager::callNext()
     {
         desc->cbFunc(task->desc->thisObj, task->item.type, task->item);
     }
-    delete(task);
+    if(task) delete(task);
+    if(!m_CtrlTaskQueue.isEmpty())
+    {
+        m_period = getTime() - m_CtrlTaskQueue.getNextTime();
+    }
     return SUCCESS;
+}
+
+void TaskManager::task()
+{
+    for(;;)
+    {
+        if(SUCCESS == callNext())
+        {
+        }
+        delay(m_period);
+    }
+
 }

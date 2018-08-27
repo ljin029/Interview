@@ -37,7 +37,7 @@ Time m_period = cPeriod;
 void Manager::task()
 {
     alarm alarmOn;
-    time current;
+    Time current;
     for(;;)
     {
         alarm.dosth = NULL;
