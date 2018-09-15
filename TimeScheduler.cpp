@@ -22,7 +22,7 @@ struct CtrlTaskCallbackDesc
 }
 struct CtrlTaskNode
 {
-    CtrlTaskElement item;
+    Time tm;
     CtrlTaskCallbackDesc desc;
 }
 enum SysStatus
@@ -47,12 +47,14 @@ public:
     Queue()
     ~Queue();
     bool isEmpty() {return (m_size == 0)} const;
-    bool pop(CtrlTaskNode& var);
+    bool pop(Node& var);
+    Node* front() { return head;}
     void insert(CtrlTaskNode& item);
     int size() {return m_size;}
 private:
     int m_size;
-    CtrlTaskNode* head;
+    Node* head;
+    mutex m_mutex;
 }
 
 Queue::Queue() : 
@@ -70,17 +72,16 @@ Queue::~Queue()
         temp = head;
     }
 }
-Time Queue::getNextTime()
-{
-    return head->node.item.tm;
-}
-bool pop(CtrlTaskElement& var)
+
+bool pop(Node& var)
 {
     if(isEmpty()) return false;
+    m_mutex(lock);
     Node* temp = head;
     var = *head;
     head = head->next;
     --m_size;
+    m_mutex(unlock);
     return true;
 }
 
@@ -90,14 +91,15 @@ void insert(CtrlTaskElement item)
     Node* newNode = new Node;
     memset(newNode->item, item, sizeof(Node));
     newNode->next = NULL;
+    m_mutex(lock);
     if(!head) head = newNode;
     else
     {
         prev = NULL;
         current = head;
-        while(current && current->item->timeout<=item->timeout)
+        while(current && current->tm<=item->tm)
         {
-            prev = next;
+            prev = current;
             current = current->next;
         }
         if(!current)
@@ -106,12 +108,12 @@ void insert(CtrlTaskElement item)
         }
         else
         {
-            if(prev) //last one
+            if(prev) //mid one
             {
                 newNode->next = prev->next;
                 prev->next = newNode;
             }
-            else //
+            else //first one
             {
                 newNode->next = head;
                 head = newNode;
@@ -119,6 +121,7 @@ void insert(CtrlTaskElement item)
         }
     }
     ++m_size;
+    m_mutex(unlock);
 }
 typedef void (*TaskCallbackFunc)(void *thisObj, CtrlTaskType type, const CtrlTaskElement &item)
 class TaskManager {
@@ -126,7 +129,11 @@ public:
     TaskManager();
     SysStatus regCallback(CtrlTaskElement& item, TaskCallbackFunc cbFunc, void* thisObj);
     SysStatus nextCall();
-    Time getNextTime();
+    Time getNextTime()
+    {
+        Node* next = m_CtrlTaskQueue.front();
+        return next->tm;
+    }
     void setMode(StateMode m) {mode = m;}
 private:
     Queue m_CtrlTaskQueue;
@@ -156,9 +163,9 @@ SysStatus TaskManager::callNext()
 {
     CtrlTaskNode* task;
     Time current = getTime();
-    if((current-m_CtrlTaskQueue.getNextTime())>5)
+    if((current - getNextTime())>5)
     {
-        m_period = current - m_CtrlTaskQueue.getNextTime();
+        m_period = current - getNextTime();
         return FAILURE;
     }
     if(IDLE == m_mode && !m_CtrlTaskQueue.isEmpty())
@@ -181,7 +188,7 @@ SysStatus TaskManager::callNext()
     if(task) delete(task);
     if(!m_CtrlTaskQueue.isEmpty())
     {
-        m_period = getTime() - m_CtrlTaskQueue.getNextTime();
+        m_period = getTime() - getNextTime();
     }
     return SUCCESS;
 }

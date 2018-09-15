@@ -69,19 +69,20 @@ void Manager::addAlarm(alarmClock& alarm)
 bool Manager::checkAlarm(const Time& current, alarmClock& alarm)
 {
     m_mutex(lock);
-    bool alarmOn = false;
+    bool ret = false;
     
-    for(auto &entry: curlist)
-    {
-        auto &alarmEntry = entry.second;
-        if((current - alarmEntry.tm) < cCycleTolerance)
+         Time current = getTime();
+   Time tm = curlist.front().tm;
+        if((current - tm) <= cCycleTolerance)
         {
-            alarmOn = true;
+            ret = true;
             alarm = curlist.pop_front();
             m_period = curlist.front().tm - current;
-            break;
-        }        
-    }
+        }     
+        else
+        {
+            m_period = curlist.front().tm - current;
+        }
     m_mutex(unlock);
-    return alarmOn;
+    return ret;
 }
